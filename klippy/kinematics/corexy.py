@@ -52,8 +52,8 @@ class CoreXYKinematics:
         # 设置轴限制和最小最大位置
         self.limits = [(1.0, -1.0)] * 5
         ranges = [r.get_range() for r in self.rails]
-        self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
-        self.axes_max = toolhead.Coord(*[r[1] for r in ranges], e=0.)
+        self.axes_min = toolhead.Coord(x=ranges[0][0], y=ranges[1][0], z=ranges[2][0], a=ranges[3][0], b=ranges[4][0], e=0.)
+        self.axes_max = toolhead.Coord(x=ranges[0][1], y=ranges[1][1], z=ranges[2][1], a=ranges[3][1], b=ranges[4][1], e=0.)
 
     def get_steppers(self):
         steppers = [s for rail in self.rails for s in rail.get_steppers()]
