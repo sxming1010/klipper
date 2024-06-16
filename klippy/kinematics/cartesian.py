@@ -14,8 +14,8 @@ class CartKinematics:
         self.dual_carriage_axis = None
         self.dual_carriage_rails = []
         self.rails = [stepper.LookupMultiRail(config.getsection('stepper_' + n))
-                      for n in 'xyz']
-        for rail, axis in zip(self.rails, 'xyz'):
+                      for n in 'xyzab']  # 添加 'a' 和 'b' 轴
+        for rail, axis in zip(self.rails, 'xyzab'):
             rail.setup_itersolve('cartesian_stepper_alloc', axis.encode())
         ranges = [r.get_range() for r in self.rails]
         self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
@@ -48,7 +48,15 @@ class CartKinematics:
                                               above=0., maxval=max_velocity)
         self.max_z_accel = config.getfloat('max_z_accel', max_accel,
                                            above=0., maxval=max_accel)
-        self.limits = [(1.0, -1.0)] * 3
+        self.max_a_velocity = config.getfloat('max_a_velocity', max_velocity,
+                                              above=0., maxval=max_velocity)
+        self.max_a_accel = config.getfloat('max_a_accel', max_accel,
+                                           above=0., maxval=max_accel)
+        self.max_b_velocity = config.getfloat('max_b_velocity', max_velocity,
+                                              above=0., maxval=max_velocity)
+        self.max_b_accel = config.getfloat('max_b_accel', max_accel,
+                                           above=0., maxval=max_accel)
+        self.limits = [(1.0, -1.0)] * 5  # 修改为5个轴的限制
     def get_steppers(self):
         return [s for rail in self.rails for s in rail.get_steppers()]
     def calc_position(self, stepper_positions):
@@ -80,7 +88,7 @@ class CartKinematics:
         # Determine movement
         position_min, position_max = rail.get_range()
         hi = rail.get_homing_info()
-        homepos = [None, None, None, None]
+        homepos = [None, None, None, None, None]  # 修改为5个轴
         homepos[axis] = hi.position_endstop
         forcepos = list(homepos)
         if hi.positive_dir:
@@ -97,10 +105,10 @@ class CartKinematics:
             else:
                 self.home_axis(homing_state, axis, self.rails[axis])
     def _motor_off(self, print_time):
-        self.limits = [(1.0, -1.0)] * 3
+        self.limits = [(1.0, -1.0)] * 5  # 修改为5个轴
     def _check_endstops(self, move):
         end_pos = move.end_pos
-        for i in (0, 1, 2):
+        for i in range(5):  # 修改为5个轴
             if (move.axes_d[i]
                 and (end_pos[i] < self.limits[i][0]
                      or end_pos[i] > self.limits[i][1])):
@@ -121,8 +129,20 @@ class CartKinematics:
         z_ratio = move.move_d / abs(move.axes_d[2])
         move.limit_speed(
             self.max_z_velocity * z_ratio, self.max_z_accel * z_ratio)
+        # Move with A - update velocity and accel for slower A axis
+        if move.axes_d[3]:
+            self._check_endstops(move)
+            a_ratio = move.move_d / abs(move.axes_d[3])
+            move.limit_speed(
+                self.max_a_velocity * a_ratio, self.max_a_accel * a_ratio)
+        # Move with B - update velocity and accel for slower B axis
+        if move.axes_d[4]:
+            self._check_endstops(move)
+            b_ratio = move.move_d / abs(move.axes_d[4])
+            move.limit_speed(
+                self.max_b_velocity * b_ratio, self.max_b_accel * b_ratio)
     def get_status(self, eventtime):
-        axes = [a for a, (l, h) in zip("xyz", self.limits) if l <= h]
+        axes = [a for a, (l, h) in zip("xyzab", self.limits) if l <= h]
         return {
             'homed_axes': "".join(axes),
             'axis_minimum': self.axes_min,
