@@ -8,7 +8,7 @@ class FiveAxisKinematics:
         self.dual_carriage_axis = None
         self.dual_carriage_rails = []
         self.rails = [stepper.LookupMultiRail(config.getsection('stepper_' + n))
-                      for n in 'xyzab']  # 包括 'xyzab' 轴
+                      for n in 'xyzab']
         for rail, axis in zip(self.rails, 'xyzab'):
             rail.setup_itersolve('fiveaxis_stepper_alloc', axis)
         for s in self.get_steppers():
@@ -22,14 +22,13 @@ class FiveAxisKinematics:
             'max_z_velocity', max_velocity, above=0., maxval=max_velocity)
         self.max_z_accel = config.getfloat(
             'max_z_accel', max_accel, above=0., maxval=max_accel)
-        self.limits = [(1.0, -1.0)] * 5  # 5轴的限制
+        self.limits = [(1.0, -1.0)] * 5
         # Setup stepper max halt velocity
         max_halt_velocity = toolhead.get_max_axis_halt()
         self.rails[0].set_max_jerk(max_halt_velocity, max_accel)
         self.rails[1].set_max_jerk(max_halt_velocity, max_accel)
         self.rails[2].set_max_jerk(
             min(max_halt_velocity, self.max_z_velocity), max_accel)
-        # 这里跳过对B轴的特别设置，因为这与具体的硬件实现细节高度相关
         # Check for dual carriage support
         if config.has_section('dual_carriage'):
             dc_config = config.getsection('dual_carriage')
@@ -70,7 +69,7 @@ class FiveAxisKinematics:
         # Determine movement
         position_min, position_max = rail.get_range()
         hi = rail.get_homing_info()
-        homepos = [None, None, None, None, None]  # 5 轴的homepos
+        homepos = [None, None, None, None, None]
         homepos[axis] = hi.position_endstop
         forcepos = list(homepos)
         if hi.positive_dir:
@@ -95,11 +94,11 @@ class FiveAxisKinematics:
                 self._home_axis(homing_state, axis, self.rails[axis])
 
     def _motor_off(self, print_time):
-        self.limits = [(1.0, -1.0)] * 5  # 重置为5轴的限制
+        self.limits = [(1.0, -1.0)] * 5
 
     def _check_endstops(self, move):
         end_pos = move.end_pos
-        for i in (0, 1, 2, 3, 4):  # 检查所有5轴
+        for i in (0, 1, 2, 3, 4):
             if (move.axes_d[i]
                 and (end_pos[i] < self.limits[i][0]
                      or end_pos[i] > self.limits[i][1])):
@@ -114,10 +113,8 @@ class FiveAxisKinematics:
         if (xpos < limits[0][0] or xpos > limits[0][1]
             or ypos < limits[1][0] or ypos > limits[1][1]):
             self._check_endstops(move)
-        # Normal XY move 测试逻辑不变
         if not move.axes_d[2]:
             return
-        # Z轴移动的特殊逻辑
         self._check_endstops(move)
         z_ratio = move.move_d / abs(move.axes_d[2])
         move.limit_speed(
