@@ -3,17 +3,19 @@
     # Copyright (C) 2017-2021  Kevin O'Connor <kevin@koconnor.net>
     #
     # This file may be distributed under the terms of the GNU GPLv3 license.
+# Code for handling the kinematics of corexy robots
+#
+# Copyright (C) 2017-2021  Kevin O'Connor <kevin@koconnor.net>
+#
+# This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, math
 import stepper
-
-# 配置日志记录
-logging.basicConfig(level=logging.DEBUG)
 
 class CoreXYKinematics:
     def __init__(self, toolhead, config):
         logging.debug("Initializing CoreXYKinematics")
         
-        # 初始化轴轨道配置
+        # 初始化轴轨道配置，包括 'a' 和 'b' 轴
         self.rails = [stepper.LookupMultiRail(config.getsection('stepper_' + n))
                       for n in 'xyzab']  # 包含 'a' 和 'b' 轴的初始化
         
@@ -27,8 +29,8 @@ class CoreXYKinematics:
         self.rails[0].setup_itersolve('corexy_stepper_alloc', b'+')
         self.rails[1].setup_itersolve('corexy_stepper_alloc', b'-')
         self.rails[2].setup_itersolve('cartesian_stepper_alloc', b'z')
-        self.rails[3].setup_itersolve('cartesian_stepper_alloc', b'a')
-        self.rails[4].setup_itersolve('cartesian_stepper_alloc', b'b')
+        self.rails[3].setup_itersolve('cartesian_stepper_alloc', b'a')  # 为 'a' 轴设置笛卡尔解算器
+        self.rails[4].setup_itersolve('cartesian_stepper_alloc', b'b')  # 为 'b' 轴设置笛卡尔解算器
         
         # 将每个斜块的轨迹查询队列设置为打印头封装的轨迹查询队列
         for s in self.get_steppers():
@@ -56,6 +58,7 @@ class CoreXYKinematics:
         self.axes_max = toolhead.Coord(x=ranges[0][1], y=ranges[1][1], z=ranges[2][1], a=ranges[3][1], b=ranges[4][1], e=0.)
 
     def get_steppers(self):
+        # 获取所有步进器，包括 'a' 和 'b' 轴
         steppers = [s for rail in self.rails for s in rail.get_steppers()]
         logging.debug(f"Steppers: {steppers}")
         return steppers
